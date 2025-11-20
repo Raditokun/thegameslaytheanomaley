@@ -6,200 +6,177 @@
 #include <string>
 #include <iostream>
 
-
-
 using namespace std;
 
 enum element { fire, water, air };
 
 struct card {
-    string name;
-    int damage;
-    element element;
-    string imageFile;
-    int x, y;
-    int width, height;
+	string name;
+	int damage;
+	element element;
+	string imageFile;
+	int x, y;
+	int width, height;
 };
 
 struct anomaly {
-    string name;
-    int hp;
-    int maxhp;
-    int damage;
-    element element;
-
-    string imageFile; 
+	string name;
+	int hp;
+	int maxhp;
+	int damage;
+	element element;
+	string imageFile;
+	int x, y;
+	int width, height;
 };
 
 struct player {
-    string name;
-    int hp;
-    int maxhp;
+	string name;
+	int hp;
+	int maxhp;
+
 };
 
 struct button {
-    int x, y, width, height;
-    string label;
+	int x, y, width, height;
+	string label;
+
+
+
 };
 
-
 bool click(int mx, int my, int x, int y, int w, int h) {
-    if (mx >= x && mx <= x + w && my >= y && my <= y + h) 
-    {
-        return true;
-    }
-    return false;
+	if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
+		return true;
+	}
+	return false;
 }
 
-// --- FUNGSI GAMBAR ---
 void draw_card(const card& c, bool clicked) {
-    // Gambar Kartu
-    readimagefile((char*)c.imageFile.c_str(), c.x, c.y, c.x + c.width, c.y + c.height);
+	readimagefile((char*)c.imageFile.c_str(), c.x, c.y, c.x + c.width, c.y + c.height);
 
-    // Efek Terpilih (Kotak Kuning)
-    if (clicked) {
-        setcolor(YELLOW);
-        setlinestyle(SOLID_LINE, 0, 3);
-        rectangle(c.x - 2, c.y - 2, c.x + c.width + 2, c.y + c.height + 2);
-        setlinestyle(SOLID_LINE, 0, 1);
-    }
+	if (clicked) {
+		setcolor(YELLOW);
+		setlinestyle(SOLID_LINE, 0, 3);
+		rectangle(c.x - 2, c.y - 2, c.x + c.width + 2, c.y + c.height + 2);
+		setlinestyle(SOLID_LINE, 0, 1); 
 
-    setcolor(WHITE);
-    setbkcolor(BLACK);
-    outtextxy(c.x, c.y - 20, (char*)c.name.c_str());
+	}
+
+	setcolor(WHITE);
+	setbkcolor(BLACK);
+	outtextxy(c.x, c.y - 20, (char*)c.name.c_str());
 }
 
 void drawButton(button b) {
-    setfillstyle(SOLID_FILL, RED);
-    bar(b.x, b.y, b.x + b.width, b.y + b.height);
-    setcolor(WHITE);
-    setbkcolor(RED);
-    outtextxy(b.x + 20, b.y + 15, (char*)b.label.c_str());
-    setbkcolor(BLACK);
+	setfillstyle(SOLID_FILL, RED);
+	bar(b.x, b.y, b.x + b.width, b.y + b.height);
+	setcolor(WHITE);
+	setbkcolor(RED);
+	outtextxy(b.x + 20, b.y + 15, (char*)b.label.c_str());
+	setbkcolor(BLACK);
+
 }
 
 void drawGame(const player& p, const anomaly& a, const vector<card>& deck, const button& btn, int cardpick) {
-    cleardevice();
+	cleardevice();
+	if (a.imageFile != "") {
+		readimagefile((char*)a.imageFile.c_str(), 350, 150, 350 + 150, 150 + 200);
+	}
+	else {
+		
+		setfillstyle(SOLID_FILL, RED);
+		fillellipse(425, 250, 80, 80);
 
-    // 1. Gambar Musuh (Gambar Diam / Static)
-    // Kita taruh di koordinat 350, 150 dengan ukuran misal 100x150 (sesuaikan gambarmu)
-    // readimagefile butuh char*, jadi kita convert string -> c_str() -> char*
+	}
 
-    // Cek apakah file gambarnya ada namanya?
-    if (a.imageFile != "") {
-        // Anggap ukuran gambar musuh 150x200 pixel
-        readimagefile((char*)a.imageFile.c_str(), 350, 150, 350 + 150, 150 + 200);
-    }
-    else {
-        // Fallback kalau lupa kasih nama file: Lingkaran Merah
-        setfillstyle(SOLID_FILL, RED);
-        fillellipse(425, 250, 80, 80);
-    }
+	setcolor(WHITE);
+	outtextxy(360, 120, (char*)a.name.c_str());
 
-    setcolor(WHITE);
-    outtextxy(360, 120, (char*)a.name.c_str()); // Geser dikit teksnya biar pas
+	for (int i = 0; i < deck.size(); i++){
+		bool isSelected = (i == cardpick);
+		draw_card(deck[i], isSelected);
 
-    // 2. Gambar Kartu
-    for (int i = 0; i < deck.size(); i++) {
-        bool isSelected = (i == cardpick);
-        draw_card(deck[i], isSelected);
-    }
+	}
 
-    // 3. Gambar Tombol Attack
-    drawButton(btn);
+	drawButton(btn);
+    
+	char hpText[50];
+	sprintf(hpText, "Your HP: %d/%d", p.hp, p.maxhp);
+	outtextxy(50, 500, hpText);
 
-    // 4. Info HP
-    char hpText[50];
-    sprintf(hpText, "Player HP: %d/%d", p.hp, p.maxhp);
-    outtextxy(50, 500, hpText);
-
-    sprintf(hpText, "Enemy HP: %d/%d", a.hp, a.maxhp);
-    outtextxy(360, 100, hpText);
+	sprintf(hpText, "Enemy HP: %d/%d", a.hp, a.maxhp);
+	outtextxy(360, 100, hpText);
 }
 
-// --- MAIN PROGRAM ---
 int main() {
-    // 1. INIT WINDOW WAJIB PERTAMA
-    initwindow(800, 600, "Slay The Anomaly");
-    srand(time(0));
+	initwindow(800, 600, "slay the anomally");
 
-    player p = { "Albertus", 100, 100 };
+	srand(time(0));
 
-    // [UBAH] Setup Musuh sekarang simpel, cukup kasih nama file gambarnya
-    // Pastikan "najibstill.bmp" ada di folder project!
-    anomaly a = { "Najib The Anomaly", 80, 80, 10, fire, "najibstill.bmp" };
+	player p = { "Albertus", 100, 100 };
+	anomaly a = { "Najib The Airbender", 80, 80, 10, fire, "najibstill.bmp" };
 
-    int cH = 150;
-    int cW = 100;
-    int startY = 400;
+	int cH = 150;
+	int cW = 100;
+	int startY = 400;
 
-    vector<card> deck;
-    deck.push_back({ "Water Magician", 15, fire, "card1.bmp", 200, startY, cW, cH });
-    deck.push_back({ "Fire Kitty", 15, water, "card2.bmp", 350, startY, cW, cH });
-    deck.push_back({ "Jett", 15, air, "card3.bmp", 500, startY, cW, cH });
+	vector<card> deck;
+	deck.push_back({ "Water Magician", 15, fire, "card1.bmp", 200, startY, cW, cH });
+	deck.push_back({ "Fire Kitty", 15, water, "card2.bmp", 350, startY, cW, cH });
+	deck.push_back({ "Jett", 15, air, "card3.bmp", 500, startY, cW, cH });
 
-    button btnAttack = { 600, 450, 120, 50, "ATTACK" };
+	button btnAttack = { 600, 450, 120, 50, "ATTACK" };
 
-    int cardpick = -1;
+	int cardpick = -1;
+	while (1) {
+		drawGame(p, a, deck, btnAttack, cardpick);
 
-    while (1) {
-        drawGame(p, a, deck, btnAttack, cardpick);
+		if (ismouseclick(WM_LBUTTONDOWN))
+		{
+			int mx, my;
+			getmouseclick(WM_LBUTTONDOWN, mx, my);
+			for (int i = 0; i < deck.size(); i++) {
+				if(click(mx,my,deck[i].x,deck[i].y, deck[i].width, deck[i].height)) {
+					cardpick = i;
+				}
+			}
+			if (click(mx, my, btnAttack.x, btnAttack.y, btnAttack.width, btnAttack.height)) {
+				if (cardpick != -1) {
+					a.hp -= deck[cardpick].damage;
+					
 
-        if (ismouseclick(WM_LBUTTONDOWN)) {
-            int mx, my;
-            getmouseclick(WM_LBUTTONDOWN, mx, my);
+					cardpick = -1;
+				}
+				if (a.hp <= 0) {
+					a.hp = 0;
+					drawGame(p, a, deck, btnAttack, cardpick);
+					settextstyle(BOLD_FONT, HORIZ_DIR, 10);
+					outtextxy(50, 250, "VICTORY!!!");
+					getch(); break;
+				}
 
-            // A. KLIK KARTU
-            for (int i = 0; i < deck.size(); i++) {
-                if (click(mx, my, deck[i].x, deck[i].y, deck[i].width, deck[i].height)) {
-                    cardpick = i;
-                    printf("Kartu terpilih: %s\n", deck[i].name.c_str());
-                }
-            }
+				delay(500);
 
-            // B. KLIK ATTACK
-            if (click(mx, my, btnAttack.x, btnAttack.y, btnAttack.width, btnAttack.height)) {
-                if (cardpick != -1) {
-                    // Serang
-                    a.hp -= deck[cardpick].damage;
-                    printf("DUAR! %s menyerang! HP Musuh: %d\n", deck[cardpick].name.c_str(), a.hp);
+				p.hp -= a.damage;
+				
 
-                    cardpick = -1;
+				if (p.hp <= 0) {
+					p.hp = 0;
+					drawGame(p, a, deck, btnAttack, cardpick);
+					settextstyle(BOLD_FONT, HORIZ_DIR, 4);
+					outtextxy(250, 250, "GAME OVER");
+					getch(); 
+					break;
 
-                    // Cek Menang
-                    if (a.hp <= 0) {
-                        a.hp = 0;
-                        drawGame(p, a, deck, btnAttack, cardpick);
-                        settextstyle(BOLD_FONT, HORIZ_DIR, 4);
-                        outtextxy(250, 250, "VICTORY!");
-                        getch(); break;
-                    }
-
-                    delay(500);
-
-                    // Musuh Balas
-                    p.hp -= a.damage;
-                    printf("Musuh membalas! HP Player: %d\n", p.hp);
-
-                    // Cek Kalah
-                    if (p.hp <= 0) {
-                        p.hp = 0;
-                        drawGame(p, a, deck, btnAttack, cardpick);
-                        settextstyle(BOLD_FONT, HORIZ_DIR, 4);
-                        outtextxy(250, 250, "GAME OVER");
-                        getch(); break;
-                    }
-                }
-                else {
-                    printf("Pilih kartu dulu!\n");
-                }
-            }
-        }
-
-        if (kbhit()) break;
-        delay(100);
-    }
-
-    closegraph();
-    return 0;
+				}
+			}
+			
+		}
+		if (kbhit()) break;
+		delay(200);
+	}
+	closegraph();
+	return 0;
+	
 }
