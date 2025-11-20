@@ -1,0 +1,109 @@
+#include "graphics.h"
+#include "stdlib.h"
+#include "time.h"
+#include "stdio.h"
+#include <vector>
+#include <string>
+#include <iostream>
+using namespace std;
+
+enum elemen {
+	fire,
+	air,
+	water,
+};
+
+struct card {
+	string name;
+	int attack;
+	int bonusattack;
+	elemen element;
+	int x, y;
+	string imageFile;
+	int width;  // Fixed typo
+	int height;
+};
+
+struct player {
+	string name;
+	int hp;
+	int maxhp;
+};
+
+struct anomaly {
+	string name;
+	int hp;
+	int maxhp;
+	int attack;
+	elemen element;
+	string imageFile;
+};
+
+void drawcard(const card& c) {
+	// Load and draw the card image
+	readimagefile(c.imageFile.c_str(), c.x, c.y, c.x + c.width, c.y + c.height);
+
+	setcolor(WHITE);
+	rectangle(c.x, c.y, c.x + c.width, c.y + c.height);
+
+	// 3. Tulis Nama & Attack di atas kartu (Supaya jelas)
+	setbkcolor(BLACK);
+}
+
+void game(const player& p, const anomaly& a, const vector<card>& deck) {
+	cleardevice();
+
+	setcolor(YELLOW);
+	outtextxy(10, 10, "Player: ");
+	outtextxy(70, 10, (char*)p.name.c_str());
+
+	char hpText[20];
+	sprintf(hpText, "HP: %d/%d", p.hp, p.maxhp);
+	outtextxy(10, 30, hpText);
+
+	// --- GAMBAR MUSUH (ANOMALY) ---
+	// Gambar kotak merah sebagai placeholder musuh
+
+	setcolor(RED);
+	rectangle(350, 150, 350 + 150, 150 + 200);
+	outtextxy(360, 130, (char*)a.name.c_str());
+	int musuhW = 250; // Lebar musuh
+	int musuhH = 350; // Tinggi musuh
+	int musuhX = 300; // Posisi X
+	int musuhY = 50; // Posisi Y
+
+	// Cara pakainya jadi lebih enak dibaca:
+	readimagefile((char*)a.imageFile.c_str(), musuhX, musuhY, musuhX + musuhW, musuhY + musuhH);
+	setcolor(WHITE);
+
+	setcolor(WHITE);
+	// Loop untuk menggambar semua kartu yang ada di vector deck
+	for (int i = 0; i < deck.size(); i++) {
+		drawcard(deck[i]);
+	}
+}
+
+int main() {
+	initwindow(800, 600, "Slay The Anomaly");
+	srand(time(NULL));
+
+	player p = { "Albertus", 100, 100 };
+	anomaly a = { "Fire Anomaly", 50, 50, 20, fire, "najibstill.bmp" };
+
+	int ch = 150;
+	int cw = 100;
+	int startY = 400;
+
+	vector<card> deck;
+	// Correct order: name, attack, bonusattack, element, x, y, imageFile, width, height
+	deck.push_back({ "Water Magician", 15, 0, fire, 200, startY, "card1.bmp", cw, ch });
+	deck.push_back({ "Fire Kitty", 15, 0, water, 350, startY, "card2.bmp", cw, ch });
+	deck.push_back({ "Jett", 15, 0, air, 500, startY, "card3.bmp", cw, ch });
+
+	while (!kbhit()) {
+		game(p, a, deck);
+		delay(100); // Delay 100ms agar tidak kedip-kedip terlalu cepat
+	}
+	closegraph();
+	return 0;
+}
