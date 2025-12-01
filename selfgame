@@ -5,23 +5,39 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <fstream>
+#include "SpriteLoader.h"
+
 using namespace std;
 
-enum elemen {
-	fire,
-	air,
-	water,
-};
+enum element { fire, water, air };
+enum GameState { MENU, TUTORIAL, GAME };
 
 struct card {
 	string name;
-	int attack;
-	int bonusattack;
-	elemen element;
-	int x, y;
+	int damage;
+	element element;
 	string imageFile;
-	int width;  // Fixed typo
-	int height;
+	int x, y;
+	int width, height;
+};
+
+// --- STRUKTUR ANOMALY DIBERSIHKAN ---
+struct anomaly {
+	int hp;
+	int maxhp;
+	int damage;
+	element element;
+
+	// Hanya menyimpan Frames gambar (tanpa mask, tanpa string nama file)
+	std::vector<void*> frames;
+
+	// Variabel untuk mengatur animasi
+	int currentFrame;
+	int timer;
+
+	int x, y;
+	int width, height;
 };
 
 struct player {
@@ -30,80 +46,274 @@ struct player {
 	int maxhp;
 };
 
-struct anomaly {
-	string name;
-	int hp;
-	int maxhp;
-	int attack;
-	elemen element;
+struct button {
+	int x, y, width, height;
+	string label;
 	string imageFile;
 };
 
-void drawcard(const card& c) {
-	// Load and draw the card image
-	readimagefile(c.imageFile.c_str(), c.x, c.y, c.x + c.width, c.y + c.height);
+bool fileExists(const string& name) {
+	ifstream f(name.c_str());
+	return f.good();
+}
+
+bool click(int mx, int my, int x, int y, int w, int h) {
+	if (mx >= x && mx <= x + w && my >= y && my <= y + h) return true;
+	return false;
+}
+
+void draw_card(const card& c, bool clicked) {
+	if (fileExists(c.imageFile)) {
+		readimagefile((char*)c.imageFile.c_str(), c.x, c.y, c.x + c.width, c.y + c.height);
+	}
+	else {
+		rectangle(c.x, c.y, c.x + c.width, c.y + c.height);
+	}
+
+	if (clicked) {
+		setcolor(YELLOW);
+		setlinestyle(SOLID_LINE, 0, 3);
+		rectangle(c.x - 2, c.y - 2, c.x + c.width + 2, c.y + c.height + 2);
+		setlinestyle(SOLID_LINE, 0, 1);
+	}
+	settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 1);
+	setcolor(BLACK);
+	setbkcolor(WHITE);
+	outtextxy(c.x, c.y - 20, (char*)c.name.c_str());
+}
+
+void drawmenu() {
+	if (fileExists("startmenu.bmp")) readimagefile("startmenu.bmp", 0, 0, 800, 600);
+}
+
+void drawtutorial() {
+	if (fileExists("tutorialmenu.bmp")) readimagefile("tutorialmenu.bmp", 0, 0, 800, 600);
+}
+
+void drawButton(button b) {
+	if (b.imageFile != "" && fileExists(b.imageFile)) {
+		readimagefile((char*)b.imageFile.c_str(), b.x, b.y, b.x + b.width, b.y + b.height);
+	}
+	else {
+		setfillstyle(SOLID_FILL, RED);
+		bar(b.x, b.y, b.x + b.width, b.y + b.height);
+		setcolor(WHITE);
+		setbkcolor(RED);
+		outtextxy(b.x + 20, b.y + 15, (char*)b.label.c_str());
+		setbkcolor(BLACK);
+	}
+}
+
+// --- LOGIKA DRAW GAME YANG BARU ---
+void drawGame(const player& p, anomaly& a, const vector<card>& deck, const button& btn, int cardpick, bool gameOver) {
+
+	// 1. Clear Screen
+	setfillstyle(SOLID_FILL, BLACK);
+	bar(0, 0, 800, 600);
+
+	// 2. Gambar HP (Cara Lama/Readimagefile)
+	if (fileExists("darahnajib100.bmp")) {
+		if (a.hp >= 86) readimagefile("darahnajib100.bmp", 0, 0, 800, 600);
+		else if (a.hp >= 51) readimagefile("darahnajib85.bmp", 0, 0, 800, 600);
+		else if (a.hp >= 26) readimagefile("darahnajib50.bmp", 0, 0, 800, 600);
+		else if (a.hp >= 2) readimagefile("darahnajib25.bmp", 0, 0, 800, 600);
+		else readimagefile("darahnajib0.bmp", 0, 0, 800, 600);
+	}
+	else {
+		setcolor(RED);
+		char hpStr[20]; sprintf(hpStr, "HP: %d", a.hp);
+		outtextxy(350, 50, hpStr);
+	}
+
+	// 3. LOGIKA BARU: Gambar Anomaly (Tanpa Mask, Tanpa sprintf)
+	if (!gameOver && !a.frames.empty()) {
+		// --- ANIMASI ---
+		
+			a.currentFrame++;
+			// Reset ke 0 jika sudah sampai frame terakhir
+			if (a.currentFrame >= a.frames.size()) a.currentFrame = 0;
+		
+
+		// --- DRAWING ---
+		// COPY_PUT = Tempel langsung (kotak)
+		putimage(a.x, a.y, a.frames[a.currentFrame], COPY_PUT);
+	}
+	else if (!gameOver) {
+		// Fallback jika gambar gagal load
+		setfillstyle(SOLID_FILL, RED);
+		fillellipse(425, 250, 80, 80);
+	}
 
 	setcolor(WHITE);
-	rectangle(c.x, c.y, c.x + c.width, c.y + c.height);
+	setbkcolor(BLACK);
 
-	// 3. Tulis Nama & Attack di atas kartu (Supaya jelas)
+	// 4. Gambar Kartu & Tombol
+	if (!gameOver) {
+		for (int i = 0; i < deck.size(); i++) {
+			bool isSelected = (i == cardpick);
+			draw_card(deck[i], isSelected);
+		}
+		drawButton(btn);
+	}
+
+	char hpText[50];
+	settextstyle(BOLD_FONT, HORIZ_DIR, 3);
+	setcolor(RED);
+	setbkcolor(WHITE);
+	sprintf(hpText, "%d/%d", p.hp, p.maxhp);
+	outtextxy(85, 160, hpText);
+	setcolor(WHITE);
+	settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
 	setbkcolor(BLACK);
 }
 
-void game(const player& p, const anomaly& a, const vector<card>& deck) {
-	cleardevice();
-
-	setcolor(YELLOW);
-	outtextxy(10, 10, "Player: ");
-	outtextxy(70, 10, (char*)p.name.c_str());
-
-	char hpText[20];
-	sprintf(hpText, "HP: %d/%d", p.hp, p.maxhp);
-	outtextxy(10, 30, hpText);
-
-	// --- GAMBAR MUSUH (ANOMALY) ---
-	// Gambar kotak merah sebagai placeholder musuh
-
-	setcolor(RED);
-	rectangle(350, 150, 350 + 150, 150 + 200);
-	outtextxy(360, 130, (char*)a.name.c_str());
-	int musuhW = 250; // Lebar musuh
-	int musuhH = 350; // Tinggi musuh
-	int musuhX = 300; // Posisi X
-	int musuhY = 50; // Posisi Y
-
-	// Cara pakainya jadi lebih enak dibaca:
-	readimagefile((char*)a.imageFile.c_str(), musuhX, musuhY, musuhX + musuhW, musuhY + musuhH);
-	setcolor(WHITE);
-
-	setcolor(WHITE);
-	// Loop untuk menggambar semua kartu yang ada di vector deck
-	for (int i = 0; i < deck.size(); i++) {
-		drawcard(deck[i]);
-	}
-}
-
 int main() {
-	initwindow(800, 600, "Slay The Anomaly");
-	srand(time(NULL));
+	// 1. Init Window SEMENTARA (Reset Trick)
+	initwindow(100, 100, "Loading...", -1000, -1000);
 
-	player p = { "Albertus", 100, 100 };
-	anomaly a = { "Fire Anomaly", 50, 50, 20, fire, "najibstill.bmp" };
+	SpriteLoader sl;
+	srand(time(0));
+	printf("--- Loading Assets ---\n");
 
-	int ch = 150;
-	int cw = 100;
+	// SETUP ANOMALY (Murni Vector)
+	// parameter: hp, maxhp, dmg, element, vector<void*>, currentFrame, timer, x, y, w, h
+	anomaly a = { 100, 100, 10, fire, {}, 0, 0, 350, 150, 150, 200 };
+
+	// LOAD GAMBAR (Hanya strip gambar, tidak ada mask)
+	if (fileExists("Najib.bmp")) {
+		// Angka 7 sesuaikan dengan jumlah frame di gambarmu
+		a.frames = sl.LoadStrip("Najib_image.bmp", 7);
+		printf("Success load Najib_image.bmp\n");
+	}
+	else {
+		printf("Error: Najib_image.bmp not found\n");
+	}
+
+	printf("--- Loading Selesai ---\n");
+
+	// 2. HARD RESET WINDOW (Wajib biar readimagefile kartu jalan)
+	closegraph();
+	initwindow(800, 600, "Slay The Anomaly", 0, 0, false, true);
+
+	while (kbhit()) getch(); // Bersihkan keyboard
+
+	// --- SETUP GAME ---
+	GameState state = MENU;
+	player p = { "Albertus",100,100 };
+
+	int cH = 150;
+	int cW = 100;
 	int startY = 400;
 
 	vector<card> deck;
-	// Correct order: name, attack, bonusattack, element, x, y, imageFile, width, height
-	deck.push_back({ "Water Magician", 15, 0, fire, 200, startY, "card1.bmp", cw, ch });
-	deck.push_back({ "Fire Kitty", 15, 0, water, 350, startY, "card2.bmp", cw, ch });
-	deck.push_back({ "Jett", 15, 0, air, 500, startY, "card3.bmp", cw, ch });
+	deck.push_back({ "Water Magician",15, fire, "card1.bmp",230, startY, cW, cH });
+	deck.push_back({ "Fire Kitty",15, water, "card2.bmp",350, startY, cW, cH });
+	deck.push_back({ "Jett",15, air, "card3.bmp",480, startY, cW, cH });
 
-	while (!kbhit()) {
-		game(p, a, deck);
-		delay(100); // Delay 100ms agar tidak kedip-kedip terlalu cepat
+	button btnAttack = { 600,450,120,50, "attack", "attack.bmp" };
+
+	int cardpick = -1;
+	int page = 0;
+	bool gameOver = false;
+
+	while (1) {
+
+		if (state == MENU) {
+			setactivepage(1 - page);
+			cleardevice();
+			drawmenu();
+			setvisualpage(1 - page);
+			page = 1 - page;
+
+			if (ismouseclick(WM_LBUTTONDOWN)) {
+				int mx, my;
+				getmouseclick(WM_LBUTTONDOWN, mx, my);
+				if (click(mx, my, 440, 380, 300, 150)) state = GAME;
+				if (click(mx, my, 60, 380, 300, 150)) state = TUTORIAL;
+			}
+		}
+		else if (state == TUTORIAL) {
+			setactivepage(1 - page);
+			cleardevice();
+			drawtutorial();
+			setvisualpage(1 - page);
+			page = 1 - page;
+
+			if (ismouseclick(WM_LBUTTONDOWN)) {
+				int mx, my;
+				getmouseclick(WM_LBUTTONDOWN, mx, my);
+				if (click(mx, my, 0, 0, 150, 100)) state = MENU;
+			}
+		}
+		else if (state == GAME) {
+			setactivepage(1 - page);
+			drawGame(p, a, deck, btnAttack, cardpick, gameOver);
+			setvisualpage(1 - page);
+			page = 1 - page;
+
+			if (!gameOver && ismouseclick(WM_LBUTTONDOWN)) {
+				int mx, my;
+				getmouseclick(WM_LBUTTONDOWN, mx, my);
+
+				for (int i = 0; i < deck.size(); i++) {
+					if (click(mx, my, deck[i].x, deck[i].y, deck[i].width, deck[i].height)) {
+						cardpick = i;
+					}
+				}
+
+				if (click(mx, my, btnAttack.x, btnAttack.y, btnAttack.width, btnAttack.height)) {
+					if (cardpick != -1) {
+						a.hp -= deck[cardpick].damage;
+						cardpick = -1;
+
+						if (a.hp <= 0) {
+							a.hp = 0;
+							gameOver = true;
+							setactivepage(1 - page);
+							drawGame(p, a, deck, btnAttack, cardpick, gameOver);
+							settextstyle(BOLD_FONT, HORIZ_DIR, 5);
+							outtextxy(200, 300, "YOU WIN!");
+							setvisualpage(1 - page);
+
+							getch();
+							state = MENU;
+							p.hp = 100; a.hp = 100; gameOver = false;
+							while (kbhit()) getch();
+							break;
+						}
+
+						delay(500);
+
+						p.hp -= 10;
+
+						if (p.hp <= 0) {
+							p.hp = 0;
+							gameOver = true;
+							setactivepage(1 - page);
+							drawGame(p, a, deck, btnAttack, cardpick, gameOver);
+							settextstyle(BOLD_FONT, HORIZ_DIR, 5);
+							outtextxy(200, 300, "GAME OVER");
+							setvisualpage(1 - page);
+
+							getch();
+							state = MENU;
+							p.hp = 100; a.hp = 100; gameOver = false;
+							while (kbhit()) getch();
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		if (kbhit()) {
+			if (getch() == 27) break;
+		}
+
+		delay(33);
 	}
+
+	SpriteLoader::Free(a.frames);
 	closegraph();
 	return 0;
 }
