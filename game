@@ -6,18 +6,22 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <windows.h> 
+#include <mmsystem.h>
+#include "SpriteLoader.h"
+#pragma comment(lib, "winmm.lib")
 
 using namespace std;
 
-enum element { fire, water, air };
-enum GameState { MENU, TUTORIAL, GAME };
+
+enum GameState { MENU, TUTORIAL, GAME,LOAD };
 
 
 
 struct card {
 	string name;
 	int damage;
-	element element;
+	
 	string imageFile;
 	int x, y;
 	int width, height;
@@ -27,10 +31,10 @@ struct anomaly {
 	int hp;
 	int maxhp;
 	int damage;
-	element element;
+	
 	string sprite;
 	int spriteFrame;
-	int animationCounter;
+	int animation;
 	int x, y;
 	int width, height;
 };
@@ -47,10 +51,7 @@ struct button {
 	string imageFile;
 };
 
-bool fileExists(const string& name) {
-	ifstream f(name.c_str());
-	return f.good();
-}
+
 
 bool click(int mx, int my, int x, int y, int w, int h) {
 	if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
@@ -59,27 +60,31 @@ bool click(int mx, int my, int x, int y, int w, int h) {
 	return false;
 }
 
-void draw_card(const card& c, bool clicked) {
+void draw_card(const card& c, bool click) {
 	readimagefile((char*)c.imageFile.c_str(), c.x, c.y, c.x + c.width, c.y + c.height);
 
-	if (clicked) {
+	if (click) {
 		setcolor(YELLOW);
-		setlinestyle(SOLID_LINE,0,3);
-		rectangle(c.x -2, c.y -2, c.x + c.width +2, c.y + c.height +2);
-		setlinestyle(SOLID_LINE,0,1);
+		setlinestyle(SOLID_LINE, 0, 3);
+		rectangle(c.x - 2, c.y - 2, c.x + c.width + 2, c.y + c.height + 2);
+		setlinestyle(SOLID_LINE, 0, 1);
 	}
-	settextstyle(SANS_SERIF_FONT, HORIZ_DIR,1);
+	settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 1);
 	setcolor(BLACK);
 	setbkcolor(WHITE);
-	outtextxy(c.x, c.y -20, (char*)c.name.c_str());
+	outtextxy(c.x, c.y - 20, (char*)c.name.c_str());
 }
 
 void drawmenu() {
-	readimagefile("startmenu.bmp",0,0,800,600);
+	readimagefile("startmenu.bmp", 0, 0, 800, 600);
 }
 
 void drawtutorial() {
-	readimagefile("tutorialmenu.bmp",0,0,800,600);
+	readimagefile("tutorialmenu.bmp", 0, 0, 800, 600);
+}
+
+void drawload() {
+	readimagefile("load.bmp", 0, 0, 800, 600);
 }
 
 void drawButton(button b) {
@@ -91,49 +96,62 @@ void drawButton(button b) {
 		bar(b.x, b.y, b.x + b.width, b.y + b.height);
 		setcolor(WHITE);
 		setbkcolor(RED);
-		outtextxy(b.x +20, b.y +15, (char*)b.label.c_str());
+		outtextxy(b.x + 20, b.y + 15, (char*)b.label.c_str());
 		setbkcolor(BLACK);
 	}
+}
+
+void drawanomaly(const anomaly& a) {
+	
 }
 
 void drawGame(const player& p, anomaly& a, const vector<card>& deck, const button& btn, int cardpick, bool gameOver) {
 	cleardevice();
 
-	if (fileExists("darahnajib100.bmp")) {
-		if (a.hp >=86) readimagefile("darahnajib100.bmp",0,0,800,600);
-		else if (a.hp >=51) readimagefile("darahnajib85.bmp",0,0,800,600);
-		else if (a.hp >=26) readimagefile("darahnajib50.bmp",0,0,800,600);
-		else if (a.hp >=2) readimagefile("darahnajib25.bmp",0,0,800,600);
-		else readimagefile("darahnajib0.bmp",0,0,800,600);
+	if (a.hp >= 86) {
+		readimagefile("darahnajib100.bmp", 0, 0, 800, 600);
+	}
+		
+	else if (a.hp >= 51) { 
+		readimagefile("darahnajib85.bmp", 0, 0, 800, 600); 
+	}
+	else if (a.hp >= 26) {
+		readimagefile("darahnajib50.bmp", 0, 0, 800, 600);
+	}
+	else if (a.hp >= 2) {
+		readimagefile("darahnajib25.bmp", 0, 0, 800, 600);
+	}
+		else if(a.hp <= 1){
+		readimagefile("darahnajib0.bmp", 0, 0, 800, 600);
 	}
 	else {
 		setcolor(RED);
 		char hpStr[20]; sprintf(hpStr, "HP: %d", a.hp);
-		outtextxy(350,50, hpStr);
+		outtextxy(350, 50, hpStr);
 	}
 
 	if (!gameOver && a.sprite != "") {
-		a.animationCounter++;
-		if (a.animationCounter >=3) {
-			a.animationCounter =0;
+		a.animation++;
+		if (a.animation >= 3) {
+			a.animation = 0;
 			a.spriteFrame++;
-			if (a.spriteFrame >4) a.spriteFrame =1;
+			if (a.spriteFrame > 4) a.spriteFrame = 1;
 		}
-		
+
 		char spriteFile[50];
 		sprintf(spriteFile, "najibstill%d.bmp", a.spriteFrame);
-		readimagefile(spriteFile,350,150,350 +150,150 +200);
+		readimagefile(spriteFile, 350, 150, 350 + 150, 150 + 200);
 	}
 	else if (!gameOver) {
 		setfillstyle(SOLID_FILL, RED);
-		fillellipse(425,250,80,80);
+		fillellipse(425, 250, 80, 80);
 	}
 
 	setcolor(WHITE);
 	setbkcolor(BLACK);
 
 	if (!gameOver) {
-		for (int i =0; i < deck.size(); i++) {
+		for (int i = 0; i < deck.size(); i++) {
 			bool isSelected = (i == cardpick);
 			draw_card(deck[i], isSelected);
 		}
@@ -141,42 +159,44 @@ void drawGame(const player& p, anomaly& a, const vector<card>& deck, const butto
 	}
 
 	char hpText[50];
-	settextstyle(BOLD_FONT, HORIZ_DIR,3);
+	settextstyle(BOLD_FONT, HORIZ_DIR, 3);
 	setcolor(RED);
 	setbkcolor(WHITE);
 	sprintf(hpText, "%d/%d", p.hp, p.maxhp);
-	outtextxy(85,160, hpText);
+	outtextxy(85, 160, hpText);
 	setcolor(WHITE);
-	settextstyle(DEFAULT_FONT, HORIZ_DIR,1);
+	settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
 	setbkcolor(BLACK);
 }
 
 int main() {
 
-	initwindow(800,600, "Slay The Anomaly");
+	initwindow(800, 600, "5024251066");
 	srand(time(0));
 
 	GameState state = MENU;
 
 	player p = { "Albertus",100,100 };
 
-	int spriteIndex = 1 +(rand() %3);
-	anomaly a = {100,100,10, fire, "najibstill", spriteIndex, 0, 0,0,150,200 };
+	int spriteIndex = 1 + (rand() % 3);
+	anomaly a = { 100,100,10, "najibstill", spriteIndex, 0, 0,0,150,200 };
 
-	int cH =150;
-	int cW =100;
-	int startY =400;
+	int cH = 150;
+	int cW = 100;
+	int startY = 400;
 
 	vector<card> deck;
-	deck.push_back({ "Water Magician",15, fire, "card1.bmp",230, startY, cW, cH });
-	deck.push_back({ "Fire Kitty",15, water, "card2.bmp",350, startY, cW, cH });
-	deck.push_back({ "Jett",15, air, "card3.bmp",480, startY, cW, cH });
+	deck.push_back({ "Water Magician",15, "card1.bmp",230, startY, cW, cH });
+	deck.push_back({ "Fire Kitty",15, "card2.bmp",350, startY, cW, cH });
+	deck.push_back({ "Jett",15, "card3.bmp",480, startY, cW, cH });
 
-	button btnAttack = {600,450,120,50, "attack", "attack.bmp" };
+	button btnAttack = { 600,450,120,50, "attack", "attack.bmp" };
 
 	int cardpick = -1;
-	int page =0;
+	int page = 0;
 	bool gameOver = false;
+
+	PlaySound(TEXT("menumusic.wav"), NULL, SND_ASYNC | SND_LOOP);
 
 	while (1) {
 
@@ -187,15 +207,42 @@ int main() {
 				int mx, my;
 				getmouseclick(WM_LBUTTONDOWN, mx, my);
 
-				if (click(mx, my,440,380,300,150)) {
-					state = GAME;
+				if (click (mx, my, 440, 380, 300, 150)) {
+					state = LOAD;
+					cleardevice();
 				}
 
-				if (click(mx, my,60,380,300,150)) {
+				
+
+
+				if (click(mx, my, 60, 380, 300, 150)) {
 					state = TUTORIAL;
 				}
 			}
 		}
+		
+		else if(state == LOAD){
+			drawload();
+			
+
+			if (ismouseclick(WM_LBUTTONDOWN)) {
+				int mx, my;
+				getmouseclick(WM_LBUTTONDOWN, mx, my);
+				if (click(mx, my, 96, 452, 271, 111)) {
+					state = GAME;
+					setactivepage(1 - page);
+					cleardevice();
+					drawGame(p, a, deck, btnAttack, cardpick, gameOver);
+					setvisualpage(1 - page);
+					page = 1 - page;
+
+					PlaySound(TEXT("najibmasuk.wav"), NULL, SND_FILENAME | SND_ASYNC);
+				}
+			}
+		}
+
+		
+
 		else if (state == TUTORIAL) {
 			drawtutorial();
 
@@ -203,7 +250,7 @@ int main() {
 				int mx, my;
 				getmouseclick(WM_LBUTTONDOWN, mx, my);
 
-				if (click(mx, my,0,0,150,100)) {
+				if (click(mx, my, 0, 0, 150, 100)) {
 					state = MENU;
 				}
 			}
@@ -215,11 +262,12 @@ int main() {
 			setvisualpage(1 - page);
 			page = 1 - page;
 
+			
 			if (!gameOver && ismouseclick(WM_LBUTTONDOWN)) {
 				int mx, my;
 				getmouseclick(WM_LBUTTONDOWN, mx, my);
 
-				for (int i =0; i < deck.size(); i++) {
+				for (int i = 0; i < deck.size(); i++) {
 					if (click(mx, my, deck[i].x, deck[i].y, deck[i].width, deck[i].height)) {
 						cardpick = i;
 					}
@@ -227,42 +275,45 @@ int main() {
 
 				if (click(mx, my, btnAttack.x, btnAttack.y, btnAttack.width, btnAttack.height)) {
 					if (cardpick != -1) {
-						a.hp -= deck[cardpick].damage;
+						a.hp = a.hp - deck[cardpick].damage;
+						PlaySound(TEXT("najibkena.wav"), NULL, SND_ASYNC);
 						cardpick = -1;
+						
 
-						if (a.hp <=0) {
-							a.hp =0;
+						if (a.hp <= 0) {
+							a.hp = 0;
 							gameOver = true;
 							setactivepage(1 - page);
 							cleardevice();
 							drawGame(p, a, deck, btnAttack, cardpick, gameOver);
-							settextstyle(BOLD_FONT, HORIZ_DIR,5);
-							
+							settextstyle(BOLD_FONT, HORIZ_DIR, 5);
+							PlaySound(TEXT("najibmati.wav"), NULL, SND_ASYNC);
 							setvisualpage(1 - page);
 
 							getch();
 							state = MENU;
-							p.hp =100; a.hp =100; gameOver = false;
+							p.hp = 100; a.hp = 100; gameOver = false;
 							break;
 						}
 
 						delay(500);
 
-						p.hp -=10;
+						p.hp = p.hp - 10;
 
-						if (p.hp <=0) {
-							p.hp =0;
+						if (p.hp <= 0) {
+							p.hp = 0;
 							gameOver = true;
 							setactivepage(1 - page);
 							cleardevice();
 							drawGame(p, a, deck, btnAttack, cardpick, gameOver);
-							settextstyle(BOLD_FONT, HORIZ_DIR,5);
+							settextstyle(BOLD_FONT, HORIZ_DIR, 5);
 							
+
 							setvisualpage(1 - page);
 
 							getch();
 							state = MENU;
-							p.hp =100; a.hp =100; gameOver = false;
+							p.hp = 100; a.hp = 100; gameOver = false;
 							break;
 						}
 					}
@@ -271,7 +322,7 @@ int main() {
 		}
 
 		if (kbhit()) {
-			if (getch() ==27) break;
+			if (getch() == 27) break;
 		}
 
 		delay(33);
